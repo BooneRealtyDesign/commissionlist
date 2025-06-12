@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Commission Lookup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --primary-red: #ff1200;
+        --primary-blue: #0043ff;
+        --off-white: #f7f5ee;
+        --white: #ffffff;
+        --black: #000000;
+        --dark-red: #aa1120;
+        --dark-blue: #0c2749;
+        --navy: #000e35;
+        --grey: #232323;
+        --deep-red: #660000;
+
+        --font-main: 'Montserrat', sans-serif;
+      }
+
+      body {
+        font-family: var(--font-main);
+        background-color: var(--off-white);
+        color: var(--black);
+        margin: 0;
+        padding: 40px 20px;
+        max-width: 800px;
+        margin: auto;
+      }
+
+      h2 {
+        color: var(--dark-blue);
+        text-align: center;
+        font-weight: 600;
+        margin-bottom: 30px;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid var(--primary-blue);
+        border-radius: 6px;
+        font-size: 16px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+        transition: border-color 0.3s ease;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--primary-red);
+      }
+
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid var(--dark-blue);
+        border-radius: 6px;
+        font-size: 16px;
+        background-color: var(--white);
+        cursor: pointer;
+        transition: background-color 0.3s ease, border-color 0.3s ease;
+        margin-bottom: 20px;
+      }
+
+      select:hover {
+        border-color: var(--primary-red);
+        background-color: #f0f0f0;
+      }
+
+      option {
+        font-size: 16px;
+      }
+
+      #listingDetails {
+        background-color: var(--white);
+        border: 1px solid var(--grey);
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      }
+
+      #listingDetails strong {
+        color: var(--dark-red);
+        display: inline-block;
+        width: 200px;
+      }
+
+      @media screen and (max-width: 600px) {
+        #listingDetails strong {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Search Property Commission Info</h2>
+    <input type="text" id="searchBox" placeholder="Filter by address..." />
+    <select id="listingDropdown"></select>
+    <div id="listingDetails"></div>
+
+    <script>
+      const SHEET_ID = "1XvMlNP2feYZYYD2Xdu93dy1FzhYNFYhGnlW58C1tCFk";
+      const SHEET_NAME = "CommissionListings";
+
+      async function loadSheet() {
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
+        const response = await fetch(url);
+        const text = await response.text();
+
+        const json = JSON.parse(text.substring(47).slice(0, -2)); // Strip Google wrapper
+        const cols = json.table.cols.map(col => col.label);
+        const rows = json.table.rows.map(row => {
+          let obj = {};
+          cols.forEach((col, i) => {
+            obj[col] = row.c[i]?.v ?? "";
+          });
+          return obj;
+        });
+
+        populateDropdown(rows);
+      }
+
+      function populateDropdown(data) {
+        const dropdown = document.getElementById("listingDropdown");
+        dropdown.innerHTML = '<option value="">Select a property</option>';
+
+        data.forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = item["Property Address"];
+          opt.text = item["Property Address"];
+          dropdown.add(opt);
+        });
+
+        dropdown.addEventListener("change", () => {
+          const selected = data.find(d => d["Property Address"] === dropdown.value);
+          let html = "";
+          for (const [key, value] of Object.entries(selected)) {
+            html += `<strong>${key}:</strong> ${value}<br>`;
+          }
+          document.getElementById("listingDetails").innerHTML = html;
+        });
+      }
+
+      document.getElementById("searchBox").addEventListener("input", () => {
+        const search = document.getElementById("searchBox").value.toLowerCase();
+        const options = document.querySelectorAll("#listingDropdown option");
+        options.forEach(opt => {
+          opt.hidden = !opt.text.toLowerCase().includes(search);
+        });
+      });
+
+      loadSheet();
+    </script>
+  </body>
+</html>
