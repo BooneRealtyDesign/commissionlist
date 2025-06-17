@@ -157,18 +157,21 @@
           dropdown.add(opt);
         });
 
-        // Save dataset globally for filtering
+        dropdown.addEventListener("change", () => {
+          const selected =
+            data.find(d => d["Property Address"] === dropdown.value) || null;
+          displayDetails(selected);
+        });
+
         window.fullDataset = data;
 
-        // In case user already typed something, trigger filter
-        applySearchFilter();
+        // Show default fields on initial load
+        displayDetails(null);
       }
 
       function displayDetails(item) {
         const container = document.getElementById("listingDetails");
         container.innerHTML = "";
-
-        if (!item) return;
 
         const fieldsToShow = [
           ["Agent First Name", "Agent First Name"],
@@ -183,6 +186,13 @@
           ["Additional Information", "Additional Information"]
         ];
 
+        const fallback = {};
+        fieldsToShow.forEach(([field]) => {
+          fallback[field] = "N/A";
+        });
+
+        const data = item || fallback;
+
         fieldsToShow.forEach(([field, label]) => {
           const row = document.createElement("div");
           row.className = "detail-row";
@@ -193,7 +203,7 @@
 
           const valueEl = document.createElement("div");
           valueEl.className = "value";
-          valueEl.textContent = item[field] || "";
+          valueEl.textContent = data[field] || "N/A";
 
           row.appendChild(labelEl);
           row.appendChild(valueEl);
@@ -201,15 +211,12 @@
         });
       }
 
-      document.getElementById("searchBox").addEventListener("input", applySearchFilter);
-
-      function applySearchFilter() {
+      document.getElementById("searchBox").addEventListener("input", () => {
         const search = document.getElementById("searchBox").value.toLowerCase();
         const dropdown = document.getElementById("listingDropdown");
 
         dropdown.innerHTML = '<option value="">Select a property</option>';
-
-        (window.fullDataset || []).forEach(item => {
+        window.fullDataset.forEach(item => {
           const match = Object.values(item).some(val =>
             (val || "").toString().toLowerCase().includes(search)
           );
@@ -220,7 +227,7 @@
             dropdown.add(opt);
           }
         });
-      }
+      });
 
       loadSheet();
     </script>
