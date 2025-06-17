@@ -16,7 +16,6 @@
         --navy: #000e35;
         --grey: #232323;
         --deep-red: #660000;
-
         --font-main: 'Montserrat', sans-serif;
       }
 
@@ -60,10 +59,6 @@
         background-color: #f0f4ff;
       }
 
-      option {
-        font-size: 16px;
-      }
-
       #listingDetails {
         background-color: var(--white);
         border: 2px solid var(--primary-blue);
@@ -105,7 +100,7 @@
   </head>
   <body>
     <h2>Search Property Commission Info</h2>
-    <input type="text" id="searchBox" placeholder="Filter by address..." />
+    <input type="text" id="searchBox" placeholder="Search by any field..." />
     <select id="listingDropdown"></select>
     <div id="listingDetails"></div>
 
@@ -117,8 +112,7 @@
         const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}`;
         const response = await fetch(url);
         const text = await response.text();
-
-        const json = JSON.parse(text.substring(47).slice(0, -2)); // Strip Google wrapper
+        const json = JSON.parse(text.substring(47).slice(0, -2));
         const cols = json.table.cols.map(col => col.label);
         const rows = json.table.rows.map(row => {
           let obj = {};
@@ -129,6 +123,12 @@
             }
             obj[col] = value;
           });
+
+          // Combine compensation + unit fields
+          obj["Buyer's Agent Compensation"] = `${obj["Buyer's Agent Compensation Offered"] || ""} ${obj["BAC $ or %"] || ""}`.trim();
+          obj["Transaction Broker Compensation"] = `${obj["Transaction Broker Compensation Offered"] || ""} ${obj["TBC $ or %"] || ""}`.trim();
+          obj["Sub Agent Compensation"] = `${obj["Sub Agent Compensation Offered"] || ""} ${obj["SAC $ or %"] || ""}`.trim();
+
           return obj;
         });
 
@@ -157,10 +157,11 @@
           dropdown.add(opt);
         });
 
-        dropdown.addEventListener("change", () => {
-          const selected = data.find(d => d["Property Address"] === dropdown.value);
-          displayDetails(selected);
-        });
+        // Save dataset globally for filtering
+        window.fullDataset = data;
+
+        // In case user already typed something, trigger filter
+        applySearchFilter();
       }
 
       function displayDetails(item) {
@@ -169,31 +170,57 @@
 
         if (!item) return;
 
-        for (const [key, value] of Object.entries(item)) {
+        const fieldsToShow = [
+          ["Agent First Name", "Agent First Name"],
+          ["Agent Last Name", "Agent Last Name"],
+          ["Company Name", "Company"],
+          ["Property Address", "Property Address"],
+          ["City", "City"],
+          ["Compensation Offered By Seller", "Compensation Offered"],
+          ["Buyer's Agent Compensation", "Buyer's Agent Compensation"],
+          ["Transaction Broker Compensation", "Transaction Broker's Compensation"],
+          ["Sub Agent Compensation", "Sub Agent Compensation"],
+          ["Additional Information", "Additional Information"]
+        ];
+
+        fieldsToShow.forEach(([field, label]) => {
           const row = document.createElement("div");
           row.className = "detail-row";
 
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = key;
+          const labelEl = document.createElement("div");
+          labelEl.className = "label";
+          labelEl.textContent = label;
 
-          const val = document.createElement("div");
-          val.className = "value";
-          val.textContent = value;
+          const valueEl = document.createElement("div");
+          valueEl.className = "value";
+          valueEl.textContent = item[field] || "";
 
-          row.appendChild(label);
-          row.appendChild(val);
+          row.appendChild(labelEl);
+          row.appendChild(valueEl);
           container.appendChild(row);
-        }
+        });
       }
 
-      document.getElementById("searchBox").addEventListener("input", () => {
+      document.getElementById("searchBox").addEventListener("input", applySearchFilter);
+
+      function applySearchFilter() {
         const search = document.getElementById("searchBox").value.toLowerCase();
-        const options = document.querySelectorAll("#listingDropdown option");
-        options.forEach(opt => {
-          opt.hidden = !opt.text.toLowerCase().includes(search);
+        const dropdown = document.getElementById("listingDropdown");
+
+        dropdown.innerHTML = '<option value="">Select a property</option>';
+
+        (window.fullDataset || []).forEach(item => {
+          const match = Object.values(item).some(val =>
+            (val || "").toString().toLowerCase().includes(search)
+          );
+          if (match) {
+            const opt = document.createElement("option");
+            opt.value = item["Property Address"];
+            opt.text = item["Property Address"];
+            dropdown.add(opt);
+          }
         });
-      });
+      }
 
       loadSheet();
     </script>
